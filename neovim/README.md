@@ -112,6 +112,99 @@ The framework also registers `:CourseOpen` (the picker) and the
 buffer-local `<localleader>c{c,h,s,l}` keymaps; this provider just
 contributes to that surface.
 
+## Try it locally
+
+For reviewers and curious vimmers wanting to reproduce the setup
+end-to-end. Assumes Neovim 0.10+, a Rust toolchain, and a config that
+uses lazy.nvim.
+
+> **Note on paths:** clone the course repo wherever you keep your
+> projects. The instructions below write that path as `<COURSE_DIR>`;
+> substitute your actual path everywhere it appears (clone command,
+> the lazy `dir =` line, and the `cd` for the cargo build). Anywhere
+> works as long as it is consistent across the three.
+
+1. Clone the course repo:
+   ```sh
+   git clone https://github.com/bergabman/solana-rust-vscode-course <COURSE_DIR>
+   ```
+
+2. Add this to your lazy.nvim plugin specs (e.g.
+   `~/.config/nvim/lua/plugins/kata.lua`), substituting `<COURSE_DIR>`:
+   ```lua
+   return {
+     -- Framework: published, lazy fetches it from GitHub.
+     {
+       "cds-io/kata-framework",
+       opts = {
+         katas = {
+           solana_rust = "<COURSE_DIR>",
+         },
+       },
+       keys = {
+         { "<leader>sk", "<cmd>Katas<CR>", desc = "Pick kata course" },
+       },
+     },
+
+     -- This provider: lives inside the course repo, point lazy at the
+     -- `neovim/` subdirectory.
+     {
+       dir = "<COURSE_DIR>/neovim",
+       dependencies = {
+         "cds-io/kata-framework",
+         "MeanderingProgrammer/render-markdown.nvim",
+       },
+     },
+   }
+   ```
+
+   `snacks.nvim` and `render-markdown.nvim` get pulled in transitively
+   by the framework's dependencies. If your config aggressively
+   lazy-loads, double-check they actually load before the picker runs.
+
+3. Build the runner once (or skip and let `:CourseBuild` do it for you
+   from inside Neovim later):
+   ```sh
+   cd <COURSE_DIR> && cargo build -p course-runner
+   ```
+
+4. Open Neovim. Hit `<leader>sk`, pick `solana_rust`, run `:CourseOpen`,
+   pick an exercise, edit the file, hit `<localleader>cc`.
+
+### What to poke at
+
+- `<localleader>cc` runs the async check; on failure, quickfix
+  populates with `file:line:col` (panics included, courtesy of the
+  leading panic pattern in the errorformat).
+- `<localleader>ch` opens a hint popup; `<C-n>` and `<C-p>` cycle
+  hints, `<Esc>` closes.
+- `<localleader>cs` shows the canonical solution; `<localleader>cl`
+  shows the lesson markdown.
+- `:make` from an exercise buffer runs `cargo test` against that
+  exercise's manifest synchronously.
+- `:CourseBuild` compiles `course-runner` and caches the binary path
+  in-process so subsequent calls bypass `cargo run`. You will feel
+  the difference: first `<localleader>cc` post-activation goes from
+  cargo-cold to instant.
+- `:CourseReset!` restores all exercises from baseline and wipes
+  `.course/progress.json`. Triggers `checktime` so open buffers
+  reload.
+- `:CourseUnmark 01_keypairs` clears one exercise's completion;
+  Tab-completion offers the loaded item ids.
+
+### If something is off
+
+- No picker on `:Katas`: `kata-framework` did not load. Check `:Lazy`
+  and confirm the spec is present.
+- Picker shows nothing: course root not detected. The provider walks
+  up from cwd looking for `course.toml`; make sure you opened Neovim
+  somewhere under your `<COURSE_DIR>`.
+- `<localleader>cc` reports "metadata failed" or hangs: usually means
+  `cargo run -p course-runner -- check <id>` itself is failing. Try
+  it in a shell to see the real error.
+- For framework-side debugging, `cds-io/kata-framework` ships
+  `:help kata` with the contract details.
+
 ## Open question: embedded provider, or its own plugin?
 
 Right now the provider lives inside the course repo, under `neovim/`.
