@@ -2,6 +2,7 @@ mod check;
 mod fs_utils;
 mod manifest;
 mod platform;
+mod progress;
 mod reset;
 mod surfpool;
 mod ui;
@@ -46,6 +47,10 @@ enum CommandKind {
         #[arg(long)]
         yes: bool,
     },
+    Progress {
+        #[command(subcommand)]
+        action: ProgressAction,
+    },
     StartUi {
         #[arg(long)]
         vscode_exec: Option<String>,
@@ -56,6 +61,13 @@ enum CommandKind {
         #[arg(long)]
         no_open: bool,
     },
+}
+
+#[derive(Subcommand)]
+enum ProgressAction {
+    List,
+    Mark { exercise: String },
+    Unmark { exercise: String },
 }
 
 #[tokio::main]
@@ -83,6 +95,11 @@ async fn main() -> Result<()> {
             let exercise = find_exercise(&manifest, &exercise)?;
             check_exercise(&root, exercise).await?;
         }
+        CommandKind::Progress { action } => match action {
+            ProgressAction::List => progress::list_completed(&root)?,
+            ProgressAction::Mark { exercise } => progress::mark_completed(&root, &exercise)?,
+            ProgressAction::Unmark { exercise } => progress::unmark_completed(&root, &exercise)?,
+        },
         CommandKind::StartUi {
             vscode_exec,
             workspace,

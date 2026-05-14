@@ -3,6 +3,7 @@ use std::path::Path;
 use anyhow::{bail, Result};
 
 use crate::fs_utils::{copy_dir, remove_dir_if_exists};
+use crate::progress;
 
 pub fn reset_course(root: &Path, yes: bool) -> Result<()> {
     if !yes {
@@ -18,7 +19,9 @@ pub fn reset_course(root: &Path, yes: bool) -> Result<()> {
 
     remove_dir_if_exists(&exercises)?;
     copy_dir(&baseline, &exercises)?;
+    progress::clear_progress(root)?;
+
     println!("Reset exercise files from {}", baseline.display());
-    println!("Course progress is stored in VS Code and will be cleared by the course UI.");
+    println!("Progress cleared.");
     Ok(())
 }

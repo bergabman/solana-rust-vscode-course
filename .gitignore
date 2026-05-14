@@ -3,3 +3,4 @@
 /.turbo
 /.course-vsix
 .DS_Store
+.course/progress.json
